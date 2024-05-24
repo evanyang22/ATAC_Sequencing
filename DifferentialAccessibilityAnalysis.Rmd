@@ -1,0 +1,186 @@
+---
+title: "Differential Accessibility Analysis"
+output: html_document
+date: "2024-05-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Following this tutorial: https://bioinformatics-core-shared-training.github.io/Quantitative-ChIPseq-Workshop/articles/Quantitative-ChIPseq-Workshop.html 
+
+And 
+
+
+https://bioconductor.org/packages/devel/bioc/vignettes/DiffBind/inst/doc/DiffBind.pdf 
+
+Creating a csv file with all the samples, based on groups within the PCA. A4 and A6 are group 2, and A1,A2,A3,A5 are group 1.
+
+The BAM Files are from the MarkDuplicates part of the Galaxy process. The BED files are the narrowpeak output from the MACS2 in Galaxy.
+
+
+
+```{r}
+library("DiffBind")
+
+#reading in samples as a DBA object
+MetaData<-dba(sampleSheet="MetaData.csv")
+
+
+
+
+```
+
+
+```{r}
+#Generating a normalized, read count table using DBA
+readCount<-dba.count(MetaData)
+
+```
+
+
+According to this source (https://www.biostars.org/p/401188/), dba.count normalizes for us after version 3.0.0, so the normalize step is commented out below. We have version 3.4.11.
+```{r}
+plot(readCount)
+#normalization of read count data
+#neonateCount<-dba.normalize(readCount)
+```
+
+```{r}
+#Establishes a design matrix with comparisons across NeonateCPC vs ChildCPC
+readCount <- dba.contrast(readCount, reorderMeta=list(Condition="NeonateCPC"))
+
+readCount
+
+
+```
+
+```{r}
+#Plotting a PCA
+
+#the one below generates a 3D PCA
+#dba.plotPCA(readCount,b3D = TRUE)
+
+dba.plotPCA(readCount,label=DBA_ID,labelCols="blue",labelSize=0.6)
+```
+
+### Differential Accessibility Analysis 
+This section uses DESeq2 to identify differentially expressed peaks along the two conditions
+```{r}
+#Analyzing the data by performing a differential analysis
+readCount<-dba.analyze(readCount)
+dba.show(readCount,bContrasts=TRUE)
+
+```
+
+
+```{r}
+plot(readCount, contrast=1)
+
+
+```
+
+
+```{r}
+
+dba.plotVolcano(readCount)
+```
+```{r}
+dba.plotVenn(readCount, contrast=1, bDB=TRUE, bGain=TRUE, bLoss=TRUE, bAll=FALSE)
+
+```
+#Obtaining "differentially bound"
+
+```{r}
+DBReport<-dba.report(readCount)
+
+DBReport
+
+
+```
+
+##Exporting it
+```{r}
+write.table(as.data.frame(DBReport), file="./DBReport.xls", quote=FALSE, row.names=FALSE, col.names=TRUE, sep="\t", na="")
+```
+
+#Annotating genomic locations with gene IDs
+```{r}
+
+#BiocManager::install("GenomicRanges")
+#BiocManager::install("TxDb.Hsapiens.UCSC.hg38.knownGene")
+#BiocManager::install("org.Hs.eg.db")
+
+library(GenomicRanges)
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+library(org.Hs.eg.db)
+library(GenomicFeatures)
+
+
+```
+
+```{r}
+
+dar <- DBReport
+
+# Load the gene annotation
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Extract genes as GRanges object
+genes <- genes(txdb)
+
+# Find overlaps between DARs and genes
+overlaps <- findOverlaps(dar, genes)
+
+# Extract the overlapping genes
+overlapping_genes <- genes[subjectHits(overlaps)]
+
+# Extract Entrez IDs of overlapping genes
+entrez_ids <- overlapping_genes$gene_id
+
+# Map Entrez IDs to gene symbols
+gene_symbols <- mapIds(org.Hs.eg.db, keys=entrez_ids, column="SYMBOL", keytype="ENTREZID", multiVals="first")
+
+# Add gene symbols to the GRanges object
+overlapping_genes$symbol <- gene_symbols
+
+# View the resulting GRanges object with gene symbols
+overlapping_genes
+
+
+
+```
+
+#Exporting New Granges Object
+
+```{r}
+library(rtracklayer)
+overlapping_genes$name <- overlapping_genes$symbol
+export(overlapping_genes,"./Output.bed")
+```
+
+```{r}
+print(overlapping_genes$name)
+
+```
+
+#testing Below
+
+
+```{r}
+library("DiffBind")
+
+samples<-read.csv("./metadata.csv")
+
+result <- dba.analyze(samples)
+
+```
+
+```{r}
+
+dba.show(samples, bContrasts=TRUE)
+```
+
+
