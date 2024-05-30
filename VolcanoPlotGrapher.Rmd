@@ -1,0 +1,149 @@
+---
+title: "VolcanoPlots"
+author: "Evan"
+date: '2024-05-24'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Following this tutorial: https://biostatsquid.com/volcano-plots-r-tutorial/#zero 
+
+```{r}
+library(tidyverse)
+library(RColorBrewer)
+library(ggrepel)
+```
+## CIF vs CIG
+```{r}
+#reading in dataset
+df <- read.csv('./Cell_DE_results_CIF_CIG.csv', row.names = 1)
+
+#adding differentially expressed label
+df$diffexpressed <- "NO"
+df$diffexpressed[df$CIF_vs_CIG_log2FC >  1 & df$CIF_vs_CIG_p.val < 0.05] <- "UP"
+df$diffexpressed[df$CIF_vs_CIG_log2FC < -1 & df$CIF_vs_CIG_p.val < 0.05] <- "DOWN"
+
+# Create a new column "delabel" to de, that will contain the name of the top 30 differentially expressed genes (NA in case they are not)
+df$delabel <- ifelse(df$Gene.Name %in% head(df[order(df$CIF_vs_CIG_p.val), "Gene.Name"], 10), df$Gene.Name, NA)
+```
+
+# CIF vs CIG
+```{r}
+#Set Theme
+theme_set(theme_classic(base_size = 20) +
+            theme(
+              axis.title.y = element_text(face = "bold", margin = margin(0,20,0,0), size = 16, color = 'black'),
+              axis.title.x = element_text(hjust = 0.5, face = "bold", margin = margin(20,0,0,0), size = 16, color = 'black'),
+              plot.title = element_text(hjust = 0.5)
+            ))
+
+
+# Edit axis labels and limits
+ggplot(data = df, aes(x = CIF_vs_CIG_log2FC, y =-log10(CIF_vs_CIG_p.val), col = diffexpressed,label=delabel)) +
+  geom_vline(xintercept = c(-1, 1), col = "gray", linetype = 'dashed') +
+  geom_hline(yintercept = -log10(0.05), col = "gray", linetype = 'dashed') + 
+  geom_point(size = 2) + 
+  scale_color_manual(values = c("#0000FF", "grey", "#FF0000"), # to set the colours of our variable  
+                     labels = c("Downregulated", "Not significant", "Upregulated")) + # to set the labels in case we want to overwrite the categories from the dataframe (UP, DOWN, NO)
+  coord_cartesian(ylim = c(0, 10), xlim = c(-5, 5)) + # since some genes can have minuslog10padj of inf, we set these limits
+  labs(color="", #legend_title, 
+       x = expression("Log"[2]*"(FC)"), y = expression("-Log"[10]*"(P-Value)")) + 
+  scale_x_continuous(breaks = seq(-10, 10, 2))+ # to customise the breaks in the x axis
+  geom_text_repel(max.overlaps = Inf)
+
+ggsave(file = "Y:/davis-lab/Evan Yang/5_23_24_Figures/cif_vs_cig.tiff", width = 7, height = 7, dpi = 300, device = "tiff", units = "in")
+```
+
+## CSF vs CSG
+
+```{r}
+df2 <- read.csv('./Cell_DE_results_CSF_CSG.csv', row.names = 1)
+#adding differentially expressed label
+df2$diffexpressed <- "NO"
+df2$diffexpressed[df2$CSF_vs_CSG_log2.fold.change >  1 & df2$CSF_vs_CSG_p.val < 0.05] <- "UP"
+df2$diffexpressed[df2$CSF_vs_CSG_log2.fold.change < -1 & df2$CSF_vs_CSG_p.val < 0.05] <- "DOWN"
+
+# Create a new column "delabel" to de, that will contain the name of the top 30 differentially expressed genes (NA in case they are not)
+df2$delabel <- ifelse(df2$Gene.Name %in% head(df2[order(df2$CSF_vs_CSG_p.val), "Gene.Name"], 10), df2$Gene.Name, NA)
+```
+
+```{r}
+# Edit axis labels and limits
+ggplot(data = df2, aes(x = CSF_vs_CSG_log2.fold.change, y =-log10(CSF_vs_CSG_p.val), col = diffexpressed,label=delabel)) +
+  geom_vline(xintercept = c(-1, 1), col = "gray", linetype = 'dashed') +
+  geom_hline(yintercept = -log10(0.05), col = "gray", linetype = 'dashed') + 
+  geom_point(size = 2) + 
+  scale_color_manual(values = c("#0000FF", "grey", "#FF0000"), # to set the colours of our variable  
+                     labels = c("Downregulated", "Not significant", "Upregulated")) + # to set the labels in case we want to overwrite the categories from the dataframe (UP, DOWN, NO)
+  coord_cartesian(ylim = c(0, 10), xlim = c(-5, 5)) + # since some genes can have minuslog10padj of inf, we set these limits
+  labs(color="", #legend_title, 
+       x = expression("Log"[2]*"(FC)"), y = expression("-Log"[10]*"(P-Value)")) + 
+  scale_x_continuous(breaks = seq(-10, 10, 2))+ # to customise the breaks in the x axis
+  geom_text_repel(max.overlaps = Inf)
+
+ggsave(file = "Y:/davis-lab/Evan Yang/5_23_24_Figures/csf_vs_csg.tiff", width = 7, height = 7, dpi = 300, device = "tiff", units = "in")
+```
+
+
+## MIF vs MIG
+
+```{r}
+df3 <- read.csv('./Medium_DE_results_MIF_MIG.csv', row.names = 1)
+#adding differentially expressed label
+df3$diffexpressed <- "NO"
+df3$diffexpressed[df3$MIF_vs_MIG_log2.fold.change >  1 & df3$MIF_vs_MIG_p.val < 0.05] <- "UP"
+df3$diffexpressed[df3$MIF_vs_MIG_log2.fold.change < -1 & df3$MIF_vs_MIG_p.val < 0.05] <- "DOWN"
+
+# Create a new column "delabel" to de, that will contain the name of the top 30 differentially expressed genes (NA in case they are not)
+df3$delabel <- ifelse(df3$Gene.Name %in% head(df3[order(df3$MIF_vs_MIG_p.val), "Gene.Name"], 10), df3$Gene.Name, NA)
+```
+
+```{r}
+# Edit axis labels and limits
+ggplot(data = df3, aes(x = MIF_vs_MIG_log2.fold.change, y =-log10(MIF_vs_MIG_p.val), col = diffexpressed,label=delabel)) +
+  geom_vline(xintercept = c(-1, 1), col = "gray", linetype = 'dashed') +
+  geom_hline(yintercept = -log10(0.05), col = "gray", linetype = 'dashed') + 
+  geom_point(size = 2) + 
+  scale_color_manual(values = c("#0000FF", "grey", "#FF0000"), # to set the colours of our variable  
+                     labels = c("Downregulated", "Not significant", "Upregulated")) + # to set the labels in case we want to overwrite the categories from the dataframe (UP, DOWN, NO)
+  coord_cartesian(ylim = c(0, 10), xlim = c(-5, 5)) + # since some genes can have minuslog10padj of inf, we set these limits
+  labs(color="", #legend_title, 
+       x = expression("Log"[2]*"(FC)"), y = expression("-Log"[10]*"(P-Value)")) + 
+  scale_x_continuous(breaks = seq(-10, 10, 2))+ # to customise the breaks in the x axis
+  geom_text_repel(max.overlaps = Inf)
+
+ggsave(file = "Y:/davis-lab/Evan Yang/5_23_24_Figures/mif_vs_mig.tiff", width = 7, height = 7, dpi = 300, device = "tiff", units = "in")
+```
+## MSF vs MSG
+
+```{r}
+df4 <- read.csv('./Medium_DE_results_MSF_MSG.csv', row.names = 1)
+#adding differentially expressed label
+df4$diffexpressed <- "NO"
+df4$diffexpressed[df4$MSF_vs_MSG_log2.fold.change >  1 & df4$MSF_vs_MSG_p.val < 0.05] <- "UP"
+df4$diffexpressed[df4$MSF_vs_MSG_log2.fold.change < -1 & df4$MSF_vs_MSG_p.val < 0.05] <- "DOWN"
+
+# Create a new column "delabel" to de, that will contain the name of the top 30 differentially expressed genes (NA in case they are not)
+df4$delabel <- ifelse(df4$Gene.Name %in% head(df4[order(df4$MSF_vs_MSG_p.val), "Gene.Name"], 10), df4$Gene.Name, NA)
+```
+
+```{r}
+# Edit axis labels and limits
+ggplot(data = df4, aes(x = MSF_vs_MSG_log2.fold.change, y =-log10(MSF_vs_MSG_p.val), col = diffexpressed,label=delabel)) +
+  geom_vline(xintercept = c(-1, 1), col = "gray", linetype = 'dashed') +
+  geom_hline(yintercept = -log10(0.05), col = "gray", linetype = 'dashed') + 
+  geom_point(size = 2) + 
+  scale_color_manual(values = c("#0000FF", "grey", "#FF0000"), # to set the colours of our variable  
+                     labels = c("Downregulated", "Not significant", "Upregulated")) + # to set the labels in case we want to overwrite the categories from the dataframe (UP, DOWN, NO)
+  coord_cartesian(ylim = c(0, 10), xlim = c(-5, 5)) + # since some genes can have minuslog10padj of inf, we set these limits
+  labs(color="", #legend_title, 
+       x = expression("Log"[2]*"(FC)"), y = expression("-Log"[10]*"(P-Value)")) + 
+  scale_x_continuous(breaks = seq(-10, 10, 2))+ # to customise the breaks in the x axis
+  geom_text_repel(max.overlaps = Inf)
+
+ggsave(file = "Y:/davis-lab/Evan Yang/5_23_24_Figures/msf_vs_msg.tiff", width = 7, height = 7, dpi = 300, device = "tiff", units = "in")
+```
+
